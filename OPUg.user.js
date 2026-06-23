@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OPUg
 // @namespace    https://github.com/hanenashi/OPUg
-// @version      0.1.0-dev
+// @version      0.1.1
 // @description  Firebase-backed tags and custom galleries for opu.peklo.biz uploads.
 // @author       hanenashi
 // @match        https://opu.peklo.biz/
