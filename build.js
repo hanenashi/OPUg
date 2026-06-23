@@ -7,6 +7,7 @@ const header = `// ==UserScript==
 // @description  Firebase-backed tags and custom galleries for opu.peklo.biz uploads.
 // @author       hanenashi
 // @match        https://opu.peklo.biz/
+// @match        https://opu.peklo.biz/opupload.php*
 // @match        https://opu.peklo.biz/?page=userpanel*
 // @match        https://opu.peklo.biz/?page=settings*
 // @run-at       document-end
@@ -32,4 +33,3 @@ const files = [
 const output = header + files.map((file) => fs.readFileSync(file, 'utf8')).join('\n\n');
 fs.writeFileSync('OPUg.user.js', output);
 console.log('Built OPUg.user.js');
-

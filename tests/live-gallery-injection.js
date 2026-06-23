@@ -52,22 +52,28 @@ async function main() {
 
     await page.addScriptTag({ path: path.join(ROOT, 'OPUg.user.js') });
     await page.locator('#opug-panel').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('.opug-box-tags').first().waitFor({ state: 'visible', timeout: 10000 });
 
     const boxCount = await page.locator('.box, .boxtop').count();
     const testTag = `smoke-${Date.now()}`;
     await page.evaluate((tag) => {
       localStorage.removeItem('opug_upload_index_v1');
-      document.querySelector('.box input[type="checkbox"][name^="item"], .boxtop input[type="checkbox"][name^="item"]')?.click();
-      document.getElementById('opug-tags').value = tag;
+      const firstBox = document.querySelector('.box, .boxtop');
+      firstBox?.querySelector('input[type="checkbox"][name^="item"]')?.click();
+      const boxTagInput = firstBox?.querySelector('.opug-box-tags input');
+      if (boxTagInput) boxTagInput.value = tag;
     }, testTag);
-    await page.locator('#opug-tag-selected').click();
-    await page.waitForFunction(() => /Saved 1\./.test(document.getElementById('opug-status')?.textContent || ''), null, { timeout: 10000 });
+    await page.locator('.opug-box-tags button').first().click();
+    await page.locator('.opug-tag-list').first().getByText(testTag).waitFor({ timeout: 10000 });
+    await page.locator('#opug-tags').fill(testTag);
     await page.locator('#opug-search').click();
     await page.locator('.opug-result').first().waitFor({ state: 'visible', timeout: 10000 });
 
     const panelText = await page.locator('#opug-panel').innerText();
     const tagButtonVisible = await page.locator('#opug-tag-selected').isVisible();
     const searchButtonVisible = await page.locator('#opug-search').isVisible();
+    const inlineTagValue = await page.locator('.opug-box-tags input').first().inputValue();
+    const inlineTagText = await page.locator('.opug-tag-list').first().innerText();
     const resultCount = await page.locator('.opug-result').count();
     const statusText = await page.locator('#opug-status').innerText();
     await page.screenshot({ path: SCREENSHOT_PATH, fullPage: false });
@@ -79,6 +85,8 @@ async function main() {
     console.log(`tagButtonVisible=${tagButtonVisible}`);
     console.log(`searchButtonVisible=${searchButtonVisible}`);
     console.log(`localTag=${testTag}`);
+    console.log(`inlineTagValue=${JSON.stringify(inlineTagValue)}`);
+    console.log(`inlineTagText=${JSON.stringify(inlineTagText)}`);
     console.log(`resultCount=${resultCount}`);
     console.log(`statusText=${JSON.stringify(statusText)}`);
     console.log(`warnings=${warnings.length}`);
@@ -87,6 +95,7 @@ async function main() {
 
     if (boxCount < 1) throw new Error('No OPU gallery boxes found after login.');
     if (!tagButtonVisible || !searchButtonVisible) throw new Error('OPUg controls are not visible.');
+    if (inlineTagValue !== testTag) throw new Error('Inline gallery tag input did not retain saved tag.');
     if (resultCount < 1) throw new Error('Local tag search returned no rendered results.');
   } finally {
     await browser.close();

@@ -8,7 +8,12 @@
     }
 
     if (window.OPUg.opu.isUploadPage()) {
-      // Upload-result capture belongs here. Keep MVP read/tag work on userpanel first.
+      window.OPUg.ui.injectUploadTagging();
+      return;
+    }
+
+    if (window.OPUg.opu.isUploadResultPage()) {
+      window.OPUg.ui.captureUploadResults();
       return;
     }
   }
@@ -19,4 +24,3 @@
     init();
   }
 })();
-

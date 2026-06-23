@@ -5,6 +5,7 @@
 // @description  Firebase-backed tags and custom galleries for opu.peklo.biz uploads.
 // @author       hanenashi
 // @match        https://opu.peklo.biz/
+// @match        https://opu.peklo.biz/opupload.php*
 // @match        https://opu.peklo.biz/?page=userpanel*
 // @match        https://opu.peklo.biz/?page=settings*
 // @run-at       document-end
@@ -168,7 +169,7 @@
     if (!isConfigured()) {
       const index = readLocalIndex();
       const existing = index[id] || {};
-      const mergedTags = Array.from(new Set([...(existing.tagsNorm || []), ...tagsNorm]));
+      const nextTags = record.replaceTags ? tagsNorm : Array.from(new Set([...(existing.tagsNorm || []), ...tagsNorm]));
       const next = {
         ...existing,
         id,
@@ -177,7 +178,7 @@
         title: record.title || existing.title || '',
         owner: record.owner || existing.owner || window.OPUg.config.firebase.ownerId,
         source: 'opu',
-        tagsNorm: mergedTags,
+        tagsNorm: nextTags,
         createdAtMs: existing.createdAtMs || Date.now(),
         updatedAtMs: Date.now()
       };
@@ -188,6 +189,15 @@
     const body = { fields: toFirestoreFields({ ...record, tagsNorm }) };
     await firestoreRequest('PATCH', `/uploads/${id}`, body);
     return { ...record, id, tagsNorm };
+  }
+
+  function getUploadByUrl(url) {
+    const id = docIdForUrl(url);
+    return readLocalIndex()[id] || null;
+  }
+
+  async function setUploadTags(record) {
+    return saveUpload({ ...record, replaceTags: true });
   }
 
   async function searchByTags(rawTags) {
@@ -226,7 +236,9 @@
     normalizeTag,
     parseTags,
     readLocalIndex,
+    getUploadByUrl,
     saveUpload,
+    setUploadTags,
     searchByTags
   };
 })();
@@ -245,6 +257,10 @@
 
   function isUploadPage() {
     return window.location.origin === 'https://opu.peklo.biz' && window.location.pathname === '/' && !window.location.search;
+  }
+
+  function isUploadResultPage() {
+    return window.location.origin === 'https://opu.peklo.biz' && window.location.pathname.endsWith('/opupload.php');
   }
 
   function getThumbUrl(imageUrl) {
@@ -284,16 +300,36 @@
     return visibleGalleryItems().filter((item) => item.checkbox && item.checkbox.checked);
   }
 
+  function extractUploadedLinks(root = document) {
+    const urls = new Set();
+    root.querySelectorAll('input[id^="link_"], input[value*="opu.peklo.biz/p/"]').forEach((input) => {
+      const value = input.value || '';
+      const hrefMatch = value.match(/href=["']([^"']+)["']/i);
+      const rawMatch = value.match(/https?:\/\/opu\.peklo\.biz\/p\/[^\s"'<>]+/i);
+      const url = hrefMatch?.[1] || rawMatch?.[0] || '';
+      if (url) urls.add(url);
+    });
+    root.querySelectorAll('a[href*="opu.peklo.biz/p/"]').forEach((link) => {
+      if (link.href) urls.add(link.href);
+    });
+    return Array.from(urls).map((url) => ({
+      url,
+      thumbUrl: getThumbUrl(url),
+      title: decodeURIComponent(url.split('/').pop() || '')
+    }));
+  }
+
   window.OPUg.opu = {
     isUserPanel,
     isSettingsPage,
     isUploadPage,
+    isUploadResultPage,
     getThumbUrl,
     visibleGalleryItems,
-    selectedGalleryItems
+    selectedGalleryItems,
+    extractUploadedLinks
   };
 })();
-
 
 
 (function () {
@@ -354,6 +390,47 @@
         margin-left: 8px;
         color: #aaa;
       }
+      .opug-box-tags {
+        margin-top: 5px;
+        padding-top: 5px;
+        border-top: 1px solid #333;
+        color: #aaa;
+        font: 11px Arial, sans-serif;
+      }
+      .opug-box-tags input,
+      .opug-upload-tags input {
+        background: #050505;
+        color: #eee;
+        border: 1px solid #666;
+        padding: 3px 5px;
+        font-size: 11px;
+      }
+      .opug-box-tags input {
+        width: 132px;
+      }
+      .opug-box-tags button {
+        margin-left: 4px;
+        padding: 2px 5px;
+        font-size: 11px;
+        cursor: pointer;
+      }
+      .opug-tag-list {
+        display: block;
+        margin-top: 3px;
+        color: #c9c15a;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .opug-upload-tags {
+        margin-top: 8px;
+        color: #aaa;
+        font: 13px Arial, sans-serif;
+      }
+      .opug-upload-tags input {
+        width: min(480px, 80vw);
+        margin-left: 6px;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -391,6 +468,103 @@
       });
       results.appendChild(item);
     });
+  }
+
+  function tagsTextForUrl(url) {
+    const record = window.OPUg.firebase.getUploadByUrl(url);
+    return (record?.tagsNorm || []).join(' ');
+  }
+
+  function updateBoxTagsDisplay(row, url) {
+    const tags = tagsTextForUrl(url);
+    const display = row.querySelector('.opug-tag-list');
+    if (display) display.textContent = tags ? `tags: ${tags}` : 'tags: none';
+    const input = row.querySelector('input');
+    if (input && document.activeElement !== input) input.value = tags;
+  }
+
+  function injectGalleryTagControls() {
+    addStyle();
+    window.OPUg.opu.visibleGalleryItems().forEach((item) => {
+      if (item.box.querySelector('.opug-box-tags')) {
+        updateBoxTagsDisplay(item.box.querySelector('.opug-box-tags'), item.url);
+        return;
+      }
+
+      const row = document.createElement('div');
+      row.className = 'opug-box-tags';
+      row.innerHTML = `
+        <input type="text" title="OPUg tags" placeholder="tags" value="">
+        <button type="button">tag</button>
+        <span class="opug-tag-list"></span>
+      `;
+      const input = row.querySelector('input');
+      const button = row.querySelector('button');
+      input.value = tagsTextForUrl(item.url);
+      button.addEventListener('click', async () => {
+        const saved = await window.OPUg.firebase.setUploadTags({
+          url: item.url,
+          thumbUrl: item.thumbUrl,
+          title: item.title,
+          tags: input.value
+        });
+        input.value = (saved?.tagsNorm || []).join(' ');
+        updateBoxTagsDisplay(row, item.url);
+      });
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          button.click();
+        }
+      });
+      item.box.appendChild(row);
+      updateBoxTagsDisplay(row, item.url);
+    });
+  }
+
+  function defaultTagsFromFiles(files) {
+    return Array.from(files || [])
+      .map((file) => file.name.replace(/\.[^.]+$/, ''))
+      .map((name) => window.OPUg.firebase.normalizeTag(name))
+      .filter(Boolean)
+      .join(' ');
+  }
+
+  function injectUploadTagging() {
+    addStyle();
+    const input = document.querySelector('#obrazek');
+    const form = document.querySelector('form#xpc');
+    if (!input || !form || document.getElementById('opug-upload-tags')) return;
+
+    const row = document.createElement('div');
+    row.id = 'opug-upload-tags';
+    row.className = 'opug-upload-tags';
+    row.innerHTML = 'OPUg tags:<input type="text" placeholder="optional tags">';
+    input.insertAdjacentElement('afterend', row);
+    const tagInput = row.querySelector('input');
+
+    input.addEventListener('change', () => {
+      if (!tagInput.value.trim()) tagInput.value = defaultTagsFromFiles(input.files);
+      sessionStorage.setItem('opug_pending_upload_tags', tagInput.value.trim());
+    });
+    tagInput.addEventListener('input', () => {
+      sessionStorage.setItem('opug_pending_upload_tags', tagInput.value.trim());
+    });
+    form.addEventListener('submit', () => {
+      sessionStorage.setItem('opug_pending_upload_tags', tagInput.value.trim());
+    });
+  }
+
+  async function captureUploadResults() {
+    const links = window.OPUg.opu.extractUploadedLinks();
+    if (!links.length) return;
+    const fallbackTags = links.map((link) => link.title.replace(/\.[^.]+$/, '')).map(window.OPUg.firebase.normalizeTag).join(' ');
+    const tags = sessionStorage.getItem('opug_pending_upload_tags') || fallbackTags;
+    if (!tags.trim()) return;
+    for (const link of links) {
+      await window.OPUg.firebase.saveUpload({ ...link, tags });
+    }
+    sessionStorage.removeItem('opug_pending_upload_tags');
   }
 
   function injectUserPanel() {
@@ -431,6 +605,7 @@
             tags
           });
         }
+        injectGalleryTagControls();
         setStatus(`Saved ${selected.length}.`);
       } catch (error) {
         setStatus(error.message || String(error));
@@ -455,9 +630,14 @@
         document.getElementById('opug-search').click();
       }
     });
+
+    injectGalleryTagControls();
   }
 
   window.OPUg.ui = {
+    captureUploadResults,
+    injectGalleryTagControls,
+    injectUploadTagging,
     injectUserPanel,
     setStatus,
     renderResults
@@ -475,7 +655,12 @@
     }
 
     if (window.OPUg.opu.isUploadPage()) {
-      // Upload-result capture belongs here. Keep MVP read/tag work on userpanel first.
+      window.OPUg.ui.injectUploadTagging();
+      return;
+    }
+
+    if (window.OPUg.opu.isUploadResultPage()) {
+      window.OPUg.ui.captureUploadResults();
       return;
     }
   }
@@ -486,4 +671,3 @@
     init();
   }
 })();
-

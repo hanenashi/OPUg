@@ -13,6 +13,10 @@
     return window.location.origin === 'https://opu.peklo.biz' && window.location.pathname === '/' && !window.location.search;
   }
 
+  function isUploadResultPage() {
+    return window.location.origin === 'https://opu.peklo.biz' && window.location.pathname.endsWith('/opupload.php');
+  }
+
   function getThumbUrl(imageUrl) {
     try {
       const url = new URL(imageUrl);
@@ -50,13 +54,33 @@
     return visibleGalleryItems().filter((item) => item.checkbox && item.checkbox.checked);
   }
 
+  function extractUploadedLinks(root = document) {
+    const urls = new Set();
+    root.querySelectorAll('input[id^="link_"], input[value*="opu.peklo.biz/p/"]').forEach((input) => {
+      const value = input.value || '';
+      const hrefMatch = value.match(/href=["']([^"']+)["']/i);
+      const rawMatch = value.match(/https?:\/\/opu\.peklo\.biz\/p\/[^\s"'<>]+/i);
+      const url = hrefMatch?.[1] || rawMatch?.[0] || '';
+      if (url) urls.add(url);
+    });
+    root.querySelectorAll('a[href*="opu.peklo.biz/p/"]').forEach((link) => {
+      if (link.href) urls.add(link.href);
+    });
+    return Array.from(urls).map((url) => ({
+      url,
+      thumbUrl: getThumbUrl(url),
+      title: decodeURIComponent(url.split('/').pop() || '')
+    }));
+  }
+
   window.OPUg.opu = {
     isUserPanel,
     isSettingsPage,
     isUploadPage,
+    isUploadResultPage,
     getThumbUrl,
     visibleGalleryItems,
-    selectedGalleryItems
+    selectedGalleryItems,
+    extractUploadedLinks
   };
 })();
-

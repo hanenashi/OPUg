@@ -106,7 +106,7 @@
     if (!isConfigured()) {
       const index = readLocalIndex();
       const existing = index[id] || {};
-      const mergedTags = Array.from(new Set([...(existing.tagsNorm || []), ...tagsNorm]));
+      const nextTags = record.replaceTags ? tagsNorm : Array.from(new Set([...(existing.tagsNorm || []), ...tagsNorm]));
       const next = {
         ...existing,
         id,
@@ -115,7 +115,7 @@
         title: record.title || existing.title || '',
         owner: record.owner || existing.owner || window.OPUg.config.firebase.ownerId,
         source: 'opu',
-        tagsNorm: mergedTags,
+        tagsNorm: nextTags,
         createdAtMs: existing.createdAtMs || Date.now(),
         updatedAtMs: Date.now()
       };
@@ -126,6 +126,15 @@
     const body = { fields: toFirestoreFields({ ...record, tagsNorm }) };
     await firestoreRequest('PATCH', `/uploads/${id}`, body);
     return { ...record, id, tagsNorm };
+  }
+
+  function getUploadByUrl(url) {
+    const id = docIdForUrl(url);
+    return readLocalIndex()[id] || null;
+  }
+
+  async function setUploadTags(record) {
+    return saveUpload({ ...record, replaceTags: true });
   }
 
   async function searchByTags(rawTags) {
@@ -164,7 +173,9 @@
     normalizeTag,
     parseTags,
     readLocalIndex,
+    getUploadByUrl,
     saveUpload,
+    setUploadTags,
     searchByTags
   };
 })();
