@@ -1,6 +1,6 @@
 {
   "name": "opug",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Firebase-backed tags and custom galleries for opu.peklo.biz uploads.",
   "scripts": {

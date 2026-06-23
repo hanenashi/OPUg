@@ -70,8 +70,7 @@ async function main() {
     await page.keyboard.press('Escape');
     await page.locator('.opug-tag-popover').waitFor({ state: 'hidden', timeout: 10000 });
     await page.locator('.opug-tag-list').first().getByText(/\+\d+/).waitFor({ timeout: 10000 });
-    await page.locator('#opug-tags').fill(testTag);
-    await page.locator('#opug-search').click();
+    await page.locator('.opug-tag-list').first().click();
     await page.waitForFunction(() => /1 visible \/ 1 tagged\./.test(document.getElementById('opug-status')?.textContent || ''), null, { timeout: 10000 });
 
     const panelText = await page.locator('#opug-panel').innerText();
@@ -100,6 +99,7 @@ async function main() {
 
     if (boxCount < 1) throw new Error('No OPU gallery boxes found after login.');
     if (!tagButtonVisible || !searchButtonVisible) throw new Error('OPUg controls are not visible.');
+    if (inlineTagText.includes('tags:')) throw new Error('Inline gallery tag text still includes the tags: prefix.');
     if (!inlineTagText.includes('+')) throw new Error('Inline gallery tag text did not collapse long tag lists.');
     if (!fullTagTitle.includes(testTag) || !fullTagTitle.includes('epsilon')) throw new Error('Full tag title did not retain saved tags.');
     if (resultCount !== 1) throw new Error(`Local tag search should filter gallery to 1 visible item, got ${resultCount}.`);

@@ -209,7 +209,7 @@
   }
 
   function compactTagsText(tags) {
-    if (!tags.length) return 'tags: none';
+    if (!tags.length) return '';
     const shown = [];
     let used = 0;
     for (const tag of tags) {
@@ -220,7 +220,7 @@
     }
     if (shown.length === 0) shown.push(`${tags[0].slice(0, 24)}...`);
     const hidden = tags.length - shown.length;
-    return `tags: ${shown.join(' ')}${hidden > 0 ? ` +${hidden}` : ''}`;
+    return `${shown.join(', ')}${hidden > 0 ? ` +${hidden}` : ''}`;
   }
 
   function hideTagPopover() {
@@ -283,6 +283,7 @@
     if (display) {
       display.textContent = compactTagsText(tagList);
       display.title = tags || 'none';
+      display.style.display = tagList.length ? '' : 'none';
     }
   }
 
@@ -310,9 +311,13 @@
       });
       display.addEventListener('click', (event) => {
         event.preventDefault();
-        const open = document.querySelector('.opug-tag-popover');
-        if (open) hideTagPopover();
-        else showTagPopover(display, item, false);
+        const tags = tagsTextForUrl(item.url);
+        const search = document.getElementById('opug-tags');
+        const button = document.getElementById('opug-search');
+        if (search && button && tags.trim()) {
+          search.value = tags;
+          button.click();
+        }
       });
       document.addEventListener('pointerdown', (event) => {
         if (!event.target.closest('.opug-tag-popover, .opug-box-tags')) {
