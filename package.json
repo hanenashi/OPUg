@@ -1,0 +1,10 @@
+{
+  "name": "opug",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Firebase-backed tags and custom galleries for opu.peklo.biz uploads.",
+  "scripts": {
+    "build": "node build.js",
+    "check": "node --check build.js && for f in src/*.js OPUg.user.js; do node --check \"$f\"; done"
+  }
+}
