@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OPUg
 // @namespace    https://github.com/hanenashi/OPUg
-// @version      0.1.3
+// @version      0.1.4
 // @description  Firebase-backed tags and custom galleries for opu.peklo.biz uploads.
 // @author       hanenashi
 // @match        https://opu.peklo.biz/
@@ -760,6 +760,7 @@
       <input id="opug-tags" type="text" placeholder="tags: cat reaction game">
       <button id="opug-tag-selected" type="button">Tag selected</button>
       <button id="opug-search" type="button">Search</button>
+      <button id="opug-clear" type="button">Clear</button>
       <span id="opug-status"></span>
       <div id="opug-results"></div>
     `;
@@ -808,6 +809,13 @@
       } catch (error) {
         setStatus(error.message || String(error));
       }
+    });
+
+    document.getElementById('opug-clear').addEventListener('click', () => {
+      document.getElementById('opug-tags').value = '';
+      clearNativeGalleryFilter();
+      renderResults([]);
+      setStatus('Showing all.');
     });
 
     document.getElementById('opug-tags').addEventListener('keydown', (event) => {

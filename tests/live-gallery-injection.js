@@ -76,10 +76,14 @@ async function main() {
     const panelText = await page.locator('#opug-panel').innerText();
     const tagButtonVisible = await page.locator('#opug-tag-selected').isVisible();
     const searchButtonVisible = await page.locator('#opug-search').isVisible();
+    const clearButtonVisible = await page.locator('#opug-clear').isVisible();
     const inlineTagText = await page.locator('.opug-tag-list').first().innerText();
     const fullTagTitle = await page.locator('.opug-tag-list').first().getAttribute('title');
     const resultCount = await page.locator('.box:visible, .boxtop:visible').count();
     const statusText = await page.locator('#opug-status').innerText();
+    await page.locator('#opug-clear').click();
+    const clearedCount = await page.locator('.box:visible, .boxtop:visible').count();
+    const clearedStatus = await page.locator('#opug-status').innerText();
     await page.screenshot({ path: SCREENSHOT_PATH, fullPage: false });
 
     console.log(`url=${page.url()}`);
@@ -88,21 +92,26 @@ async function main() {
     console.log(`panelText=${JSON.stringify(panelText.replace(/\s+/g, ' ').trim())}`);
     console.log(`tagButtonVisible=${tagButtonVisible}`);
     console.log(`searchButtonVisible=${searchButtonVisible}`);
+    console.log(`clearButtonVisible=${clearButtonVisible}`);
     console.log(`localTag=${testTag}`);
     console.log(`inlineTagText=${JSON.stringify(inlineTagText)}`);
     console.log(`fullTagTitle=${JSON.stringify(fullTagTitle)}`);
     console.log(`resultCount=${resultCount}`);
     console.log(`statusText=${JSON.stringify(statusText)}`);
+    console.log(`clearedCount=${clearedCount}`);
+    console.log(`clearedStatus=${JSON.stringify(clearedStatus)}`);
     console.log(`warnings=${warnings.length}`);
     console.log(`errors=${errors.length}`);
     console.log(`screenshot=${SCREENSHOT_PATH}`);
 
     if (boxCount < 1) throw new Error('No OPU gallery boxes found after login.');
-    if (!tagButtonVisible || !searchButtonVisible) throw new Error('OPUg controls are not visible.');
+    if (!tagButtonVisible || !searchButtonVisible || !clearButtonVisible) throw new Error('OPUg controls are not visible.');
     if (inlineTagText.includes('tags:')) throw new Error('Inline gallery tag text still includes the tags: prefix.');
     if (!inlineTagText.includes('+')) throw new Error('Inline gallery tag text did not collapse long tag lists.');
     if (!fullTagTitle.includes(testTag) || !fullTagTitle.includes('epsilon')) throw new Error('Full tag title did not retain saved tags.');
     if (resultCount !== 1) throw new Error(`Local tag search should filter gallery to 1 visible item, got ${resultCount}.`);
+    if (clearedCount !== boxCount) throw new Error(`Clear should restore ${boxCount} visible items, got ${clearedCount}.`);
+    if (clearedStatus !== 'Showing all.') throw new Error('Clear did not reset status.');
   } finally {
     await browser.close();
   }

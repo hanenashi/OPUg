@@ -3,7 +3,7 @@ const fs = require('fs');
 const header = `// ==UserScript==
 // @name         OPUg
 // @namespace    https://github.com/hanenashi/OPUg
-// @version      0.1.3
+// @version      0.1.4
 // @description  Firebase-backed tags and custom galleries for opu.peklo.biz uploads.
 // @author       hanenashi
 // @match        https://opu.peklo.biz/
