@@ -114,6 +114,7 @@
     `;
 
     anchor.parentNode.insertBefore(panel, anchor);
+    setStatus(window.OPUg.firebase.isConfigured() ? 'Firestore backend.' : 'Local backend.');
 
     document.getElementById('opug-tag-selected').addEventListener('click', async () => {
       const tags = document.getElementById('opug-tags').value;
@@ -149,6 +150,13 @@
         setStatus(error.message || String(error));
       }
     });
+
+    document.getElementById('opug-tags').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        document.getElementById('opug-search').click();
+      }
+    });
   }
 
   window.OPUg.ui = {
@@ -157,4 +165,3 @@
     renderResults
   };
 })();
-

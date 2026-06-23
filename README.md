@@ -3,6 +3,10 @@
 OPUg is a companion userscript concept for adding user-owned tags, custom galleries,
 and fast image search on top of Okoun Picture Uploader at `https://opu.peklo.biz/`.
 
+## Install
+
+[Install OPUg userscript](https://github.com/hanenashi/OPUg/raw/main/OPUg.user.js)
+
 The core idea:
 
 1. When an image is uploaded to OPU, capture the final OPU URL.
@@ -235,4 +239,3 @@ later moved to a setup panel.
 5. Add tag search result grid.
 6. Add old-upload backfill flow.
 7. Add upload-result capture on the main page.
-

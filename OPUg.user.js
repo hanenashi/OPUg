@@ -82,6 +82,22 @@
     return Boolean(window.OPUg.config.firebase.projectId);
   }
 
+  function storageKey() {
+    return 'opug_upload_index_v1';
+  }
+
+  function readLocalIndex() {
+    try {
+      return JSON.parse(localStorage.getItem(storageKey()) || '{}');
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function writeLocalIndex(index) {
+    localStorage.setItem(storageKey(), JSON.stringify(index));
+  }
+
   function docIdForUrl(url) {
     let hash = 0;
     for (let i = 0; i < url.length; i++) {
@@ -149,6 +165,26 @@
     const tagsNorm = parseTags(record.tags || record.tagsNorm || '');
     if (!record.url || tagsNorm.length === 0) return null;
     const id = docIdForUrl(record.url);
+    if (!isConfigured()) {
+      const index = readLocalIndex();
+      const existing = index[id] || {};
+      const mergedTags = Array.from(new Set([...(existing.tagsNorm || []), ...tagsNorm]));
+      const next = {
+        ...existing,
+        id,
+        url: record.url,
+        thumbUrl: record.thumbUrl || existing.thumbUrl || record.url,
+        title: record.title || existing.title || '',
+        owner: record.owner || existing.owner || window.OPUg.config.firebase.ownerId,
+        source: 'opu',
+        tagsNorm: mergedTags,
+        createdAtMs: existing.createdAtMs || Date.now(),
+        updatedAtMs: Date.now()
+      };
+      index[id] = next;
+      writeLocalIndex(index);
+      return next;
+    }
     const body = { fields: toFirestoreFields({ ...record, tagsNorm }) };
     await firestoreRequest('PATCH', `/uploads/${id}`, body);
     return { ...record, id, tagsNorm };
@@ -157,6 +193,12 @@
   async function searchByTags(rawTags) {
     const tags = parseTags(rawTags);
     if (tags.length === 0) return [];
+
+    if (!isConfigured()) {
+      return Object.values(readLocalIndex())
+        .filter((record) => tags.every((tag) => (record.tagsNorm || []).includes(tag)))
+        .sort((a, b) => (b.updatedAtMs || 0) - (a.updatedAtMs || 0));
+    }
 
     const body = {
       structuredQuery: {
@@ -183,11 +225,11 @@
     isConfigured,
     normalizeTag,
     parseTags,
+    readLocalIndex,
     saveUpload,
     searchByTags
   };
 })();
-
 
 
 (function () {
@@ -370,6 +412,7 @@
     `;
 
     anchor.parentNode.insertBefore(panel, anchor);
+    setStatus(window.OPUg.firebase.isConfigured() ? 'Firestore backend.' : 'Local backend.');
 
     document.getElementById('opug-tag-selected').addEventListener('click', async () => {
       const tags = document.getElementById('opug-tags').value;
@@ -405,6 +448,13 @@
         setStatus(error.message || String(error));
       }
     });
+
+    document.getElementById('opug-tags').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        document.getElementById('opug-search').click();
+      }
+    });
   }
 
   window.OPUg.ui = {
@@ -413,7 +463,6 @@
     renderResults
   };
 })();
-
 
 
 (function () {

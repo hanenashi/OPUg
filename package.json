@@ -5,6 +5,11 @@
   "description": "Firebase-backed tags and custom galleries for opu.peklo.biz uploads.",
   "scripts": {
     "build": "node build.js",
-    "check": "node --check build.js && for f in src/*.js OPUg.user.js; do node --check \"$f\"; done"
+    "check": "node --check build.js && for f in src/*.js OPUg.user.js tests/*.js; do node --check \"$f\"; done",
+    "smoke:opu": "node tests/live-opu-smoke.js",
+    "smoke:gallery": "node tests/live-gallery-injection.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.0"
   }
 }
