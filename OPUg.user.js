@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OPUg
 // @namespace    https://github.com/hanenashi/OPUg
-// @version      0.1.1
+// @version      0.1.2
 // @description  Firebase-backed tags and custom galleries for opu.peklo.biz uploads.
 // @author       hanenashi
 // @match        https://opu.peklo.biz/
@@ -396,6 +396,9 @@
         margin-top: 5px;
         padding-top: 5px;
         border-top: 1px solid #333;
+        display: flex;
+        align-items: center;
+        gap: 4px;
         color: #aaa;
         font: 11px Arial, sans-serif;
       }
@@ -410,19 +413,45 @@
       .opug-box-tags input {
         width: 132px;
       }
-      .opug-box-tags button {
-        margin-left: 4px;
+      .opug-box-tags button,
+      .opug-tag-popover button {
         padding: 2px 5px;
         font-size: 11px;
         cursor: pointer;
       }
       .opug-tag-list {
-        display: block;
-        margin-top: 3px;
+        display: inline-block;
+        flex: 1 1 auto;
+        min-width: 0;
         color: #c9c15a;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        cursor: help;
+      }
+      .opug-tag-popover {
+        position: fixed;
+        z-index: 2147483647;
+        max-width: min(340px, 88vw);
+        padding: 8px;
+        border: 1px solid #777;
+        background: rgba(12, 12, 12, 0.98);
+        color: #ddd;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.55);
+        font: 12px Arial, sans-serif;
+      }
+      .opug-tag-popover input {
+        width: min(250px, 68vw);
+        margin-right: 5px;
+        background: #050505;
+        color: #eee;
+        border: 1px solid #666;
+        padding: 4px 6px;
+      }
+      .opug-full-tags {
+        color: #c9c15a;
+        line-height: 1.35;
+        word-break: break-word;
       }
       .opug-upload-tags {
         margin-top: 8px;
@@ -515,12 +544,82 @@
     return (record?.tagsNorm || []).join(' ');
   }
 
+  function compactTagsText(tags) {
+    if (!tags.length) return 'tags: none';
+    const shown = [];
+    let used = 0;
+    for (const tag of tags) {
+      const next = used + tag.length + (shown.length ? 1 : 0);
+      if (shown.length >= 3 || next > 28) break;
+      shown.push(tag);
+      used = next;
+    }
+    if (shown.length === 0) shown.push(`${tags[0].slice(0, 24)}...`);
+    const hidden = tags.length - shown.length;
+    return `tags: ${shown.join(' ')}${hidden > 0 ? ` +${hidden}` : ''}`;
+  }
+
+  function hideTagPopover() {
+    document.querySelector('.opug-tag-popover')?.remove();
+  }
+
+  function showTagPopover(anchor, item, edit = false) {
+    hideTagPopover();
+    const popover = document.createElement('div');
+    popover.className = 'opug-tag-popover';
+    const tags = tagsTextForUrl(item.url);
+    if (edit) {
+      popover.innerHTML = '<input type="text"><button type="button">save</button>';
+      const input = popover.querySelector('input');
+      const button = popover.querySelector('button');
+      input.value = tags;
+      button.addEventListener('click', async () => {
+        await window.OPUg.firebase.setUploadTags({
+          url: item.url,
+          thumbUrl: item.thumbUrl,
+          title: item.title,
+          tags: input.value
+        });
+        updateBoxTagsDisplay(item.box.querySelector('.opug-box-tags'), item.url);
+        hideTagPopover();
+      });
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          button.click();
+        } else if (event.key === 'Escape') {
+          hideTagPopover();
+        }
+      });
+    } else {
+      const full = document.createElement('div');
+      full.className = 'opug-full-tags';
+      full.textContent = tags || 'none';
+      popover.appendChild(full);
+    }
+
+    document.body.appendChild(popover);
+    const rect = anchor.getBoundingClientRect();
+    const pop = popover.getBoundingClientRect();
+    const left = Math.min(Math.max(6, rect.left), window.innerWidth - pop.width - 6);
+    const top = Math.min(Math.max(6, rect.bottom + 4), window.innerHeight - pop.height - 6);
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+    popover.addEventListener('mouseenter', () => clearTimeout(popover._hideTimer));
+    popover.addEventListener('mouseleave', () => {
+      popover._hideTimer = setTimeout(hideTagPopover, 180);
+    });
+    popover.querySelector('input')?.focus();
+  }
+
   function updateBoxTagsDisplay(row, url) {
     const tags = tagsTextForUrl(url);
+    const tagList = window.OPUg.firebase.parseTags(tags);
     const display = row.querySelector('.opug-tag-list');
-    if (display) display.textContent = tags ? `tags: ${tags}` : 'tags: none';
-    const input = row.querySelector('input');
-    if (input && document.activeElement !== input) input.value = tags;
+    if (display) {
+      display.textContent = compactTagsText(tagList);
+      display.title = tags || 'none';
+    }
   }
 
   function injectGalleryTagControls() {
@@ -534,25 +633,30 @@
       const row = document.createElement('div');
       row.className = 'opug-box-tags';
       row.innerHTML = `
-        <input type="text" title="OPUg tags" placeholder="tags" value="">
-        <button type="button">tag</button>
         <span class="opug-tag-list"></span>
+        <button type="button">tag</button>
       `;
-      const input = row.querySelector('input');
+      const display = row.querySelector('.opug-tag-list');
       const button = row.querySelector('button');
-      input.value = tagsTextForUrl(item.url);
-      button.addEventListener('click', async () => {
-        const saved = await window.OPUg.firebase.setUploadTags({
-          url: item.url,
-          thumbUrl: item.thumbUrl,
-          title: item.title,
-          tags: input.value
-        });
-        input.value = (saved?.tagsNorm || []).join(' ');
-        updateBoxTagsDisplay(row, item.url);
+      button.addEventListener('click', () => showTagPopover(button, item, true));
+      display.addEventListener('mouseenter', () => showTagPopover(display, item, false));
+      display.addEventListener('mouseleave', () => {
+        const popover = document.querySelector('.opug-tag-popover');
+        if (popover) popover._hideTimer = setTimeout(hideTagPopover, 180);
       });
-      input.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
+      display.addEventListener('click', (event) => {
+        event.preventDefault();
+        const open = document.querySelector('.opug-tag-popover');
+        if (open) hideTagPopover();
+        else showTagPopover(display, item, false);
+      });
+      document.addEventListener('pointerdown', (event) => {
+        if (!event.target.closest('.opug-tag-popover, .opug-box-tags')) {
+          hideTagPopover();
+        }
+      }, { capture: true });
+      button.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           button.click();
         }
