@@ -14,7 +14,8 @@
   }
 
   function isUploadResultPage() {
-    return window.location.origin === 'https://opu.peklo.biz' && window.location.pathname.endsWith('/opupload.php');
+    return window.location.origin === 'https://opu.peklo.biz'
+      && (window.location.pathname.endsWith('/opupload.php') || window.location.search.includes('page=done'));
   }
 
   function getThumbUrl(imageUrl) {

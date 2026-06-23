@@ -8,6 +8,7 @@ const header = `// ==UserScript==
 // @author       hanenashi
 // @match        https://opu.peklo.biz/
 // @match        https://opu.peklo.biz/opupload.php*
+// @match        https://opu.peklo.biz/?page=done*
 // @match        https://opu.peklo.biz/?page=userpanel*
 // @match        https://opu.peklo.biz/?page=settings*
 // @run-at       document-end

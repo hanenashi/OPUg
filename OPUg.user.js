@@ -6,6 +6,7 @@
 // @author       hanenashi
 // @match        https://opu.peklo.biz/
 // @match        https://opu.peklo.biz/opupload.php*
+// @match        https://opu.peklo.biz/?page=done*
 // @match        https://opu.peklo.biz/?page=userpanel*
 // @match        https://opu.peklo.biz/?page=settings*
 // @run-at       document-end
@@ -260,7 +261,8 @@
   }
 
   function isUploadResultPage() {
-    return window.location.origin === 'https://opu.peklo.biz' && window.location.pathname.endsWith('/opupload.php');
+    return window.location.origin === 'https://opu.peklo.biz'
+      && (window.location.pathname.endsWith('/opupload.php') || window.location.search.includes('page=done'));
   }
 
   function getThumbUrl(imageUrl) {
@@ -431,6 +433,27 @@
         width: min(480px, 80vw);
         margin-left: 6px;
       }
+      #opug-result-tags {
+        margin: 12px auto;
+        padding: 10px;
+        max-width: 920px;
+        border: 1px solid #666;
+        background: #171717;
+        color: #ddd;
+        font: 13px Arial, sans-serif;
+      }
+      #opug-result-tags input {
+        width: min(520px, 78vw);
+        margin: 0 6px;
+        background: #050505;
+        color: #eee;
+        border: 1px solid #666;
+        padding: 4px 6px;
+      }
+      #opug-result-tags button {
+        padding: 4px 8px;
+        cursor: pointer;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -468,6 +491,23 @@
       });
       results.appendChild(item);
     });
+  }
+
+  function clearNativeGalleryFilter() {
+    window.OPUg.opu.visibleGalleryItems().forEach((item) => {
+      item.box.style.display = '';
+    });
+  }
+
+  function filterNativeGallery(records) {
+    const urls = new Set(records.map((record) => record.url));
+    let visible = 0;
+    window.OPUg.opu.visibleGalleryItems().forEach((item) => {
+      const match = urls.has(item.url);
+      item.box.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    return visible;
   }
 
   function tagsTextForUrl(url) {
@@ -557,14 +597,44 @@
 
   async function captureUploadResults() {
     const links = window.OPUg.opu.extractUploadedLinks();
-    if (!links.length) return;
+    if (!links.length) {
+      injectUploadTagging();
+      return;
+    }
     const fallbackTags = links.map((link) => link.title.replace(/\.[^.]+$/, '')).map(window.OPUg.firebase.normalizeTag).join(' ');
     const tags = sessionStorage.getItem('opug_pending_upload_tags') || fallbackTags;
-    if (!tags.trim()) return;
-    for (const link of links) {
-      await window.OPUg.firebase.saveUpload({ ...link, tags });
+    if (tags.trim()) {
+      for (const link of links) {
+        await window.OPUg.firebase.saveUpload({ ...link, tags });
+      }
+      sessionStorage.removeItem('opug_pending_upload_tags');
     }
-    sessionStorage.removeItem('opug_pending_upload_tags');
+    injectResultTagging(links, tags || fallbackTags);
+  }
+
+  function injectResultTagging(links, initialTags) {
+    addStyle();
+    if (document.getElementById('opug-result-tags')) return;
+    const anchor = document.querySelector('.opunadpis') || document.body.firstElementChild || document.body;
+    const panel = document.createElement('div');
+    panel.id = 'opug-result-tags';
+    panel.innerHTML = `
+      <strong>OPUg uploaded tags</strong>
+      <input type="text" value="">
+      <button type="button">save tags</button>
+      <span id="opug-result-status"></span>
+    `;
+    anchor.insertAdjacentElement('afterend', panel);
+    const input = panel.querySelector('input');
+    const button = panel.querySelector('button');
+    const status = panel.querySelector('#opug-result-status');
+    input.value = initialTags || '';
+    button.addEventListener('click', async () => {
+      for (const link of links) {
+        await window.OPUg.firebase.setUploadTags({ ...link, tags: input.value });
+      }
+      status.textContent = ` saved ${links.length}`;
+    });
   }
 
   function injectUserPanel() {
@@ -614,11 +684,18 @@
 
     document.getElementById('opug-search').addEventListener('click', async () => {
       const tags = document.getElementById('opug-tags').value;
+      if (!tags.trim()) {
+        clearNativeGalleryFilter();
+        renderResults([]);
+        setStatus('Showing all.');
+        return;
+      }
       setStatus('Searching...');
       try {
         const records = await window.OPUg.firebase.searchByTags(tags);
-        renderResults(records);
-        setStatus(`${records.length} result(s).`);
+        renderResults([]);
+        const visible = filterNativeGallery(records);
+        setStatus(`${visible} visible / ${records.length} tagged.`);
       } catch (error) {
         setStatus(error.message || String(error));
       }
@@ -636,6 +713,8 @@
 
   window.OPUg.ui = {
     captureUploadResults,
+    clearNativeGalleryFilter,
+    filterNativeGallery,
     injectGalleryTagControls,
     injectUploadTagging,
     injectUserPanel,
@@ -651,6 +730,11 @@
   function init() {
     if (window.OPUg.opu.isUserPanel()) {
       window.OPUg.ui.injectUserPanel();
+      return;
+    }
+
+    if (window.OPUg.opu.extractUploadedLinks().length > 0) {
+      window.OPUg.ui.captureUploadResults();
       return;
     }
 

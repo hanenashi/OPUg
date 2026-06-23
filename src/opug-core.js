@@ -7,6 +7,11 @@
       return;
     }
 
+    if (window.OPUg.opu.extractUploadedLinks().length > 0) {
+      window.OPUg.ui.captureUploadResults();
+      return;
+    }
+
     if (window.OPUg.opu.isUploadPage()) {
       window.OPUg.ui.injectUploadTagging();
       return;

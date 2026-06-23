@@ -26,6 +26,28 @@ async function run(browserType, name) {
     if (fileInputCount !== 1) throw new Error(`${name}: #obrazek missing`);
     if (uploadFormCount !== 1) throw new Error(`${name}: form#xpc missing`);
     if (uploadTagValue !== 'original-fancy-name') throw new Error(`${name}: upload tag default did not use original filename`);
+
+    await page.goto('https://opu.peklo.biz/?page=done', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      localStorage.removeItem('opug_upload_index_v1');
+      sessionStorage.setItem('opug_pending_upload_tags', 'some-tag');
+    });
+    await page.setContent(`
+      <html><body>
+        <div class="opunadpis">Okoun Picture Uploader</div>
+        <input id="link_1" value='<a href="https://opu.peklo.biz/p/12/34/56/Original%20Fancy%20Name.jpg">x</a>'>
+      </body></html>
+    `);
+    await page.addScriptTag({ path: path.join(ROOT, 'OPUg.user.js') });
+    await page.locator('#opug-result-tags').waitFor({ state: 'visible', timeout: 10000 });
+    const resultTagValue = await page.locator('#opug-result-tags input').inputValue();
+    const storedTags = await page.evaluate(() => {
+      const index = JSON.parse(localStorage.getItem('opug_upload_index_v1') || '{}');
+      return Object.values(index)[0]?.tagsNorm || [];
+    });
+    console.log(`${name}: resultTags=${JSON.stringify(resultTagValue)} storedTags=${JSON.stringify(storedTags)}`);
+    if (resultTagValue !== 'some-tag') throw new Error(`${name}: result tag input did not use pending upload tags`);
+    if (!storedTags.includes('some-tag')) throw new Error(`${name}: upload result tags were not stored`);
   } finally {
     await browser.close();
   }

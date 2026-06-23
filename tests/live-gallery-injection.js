@@ -67,14 +67,14 @@ async function main() {
     await page.locator('.opug-tag-list').first().getByText(testTag).waitFor({ timeout: 10000 });
     await page.locator('#opug-tags').fill(testTag);
     await page.locator('#opug-search').click();
-    await page.locator('.opug-result').first().waitFor({ state: 'visible', timeout: 10000 });
+    await page.waitForFunction(() => /1 visible \/ 1 tagged\./.test(document.getElementById('opug-status')?.textContent || ''), null, { timeout: 10000 });
 
     const panelText = await page.locator('#opug-panel').innerText();
     const tagButtonVisible = await page.locator('#opug-tag-selected').isVisible();
     const searchButtonVisible = await page.locator('#opug-search').isVisible();
     const inlineTagValue = await page.locator('.opug-box-tags input').first().inputValue();
     const inlineTagText = await page.locator('.opug-tag-list').first().innerText();
-    const resultCount = await page.locator('.opug-result').count();
+    const resultCount = await page.locator('.box:visible, .boxtop:visible').count();
     const statusText = await page.locator('#opug-status').innerText();
     await page.screenshot({ path: SCREENSHOT_PATH, fullPage: false });
 
@@ -96,7 +96,7 @@ async function main() {
     if (boxCount < 1) throw new Error('No OPU gallery boxes found after login.');
     if (!tagButtonVisible || !searchButtonVisible) throw new Error('OPUg controls are not visible.');
     if (inlineTagValue !== testTag) throw new Error('Inline gallery tag input did not retain saved tag.');
-    if (resultCount < 1) throw new Error('Local tag search returned no rendered results.');
+    if (resultCount !== 1) throw new Error(`Local tag search should filter gallery to 1 visible item, got ${resultCount}.`);
   } finally {
     await browser.close();
   }
