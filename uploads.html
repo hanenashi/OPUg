@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OPU Upload Timing Report</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --ink: #17202a;
+      --muted: #5f6b7a;
+      --line: #d9dee7;
+      --accent: #246bfe;
+      --accent-2: #00a36c;
+      --warn: #c77700;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 28px 18px 48px;
+    }
+
+    h1, h2, h3 { line-height: 1.2; margin: 0; }
+    h1 { font-size: clamp(28px, 5vw, 44px); }
+    h2 { font-size: 22px; margin-bottom: 12px; }
+    h3 { font-size: 17px; margin-bottom: 8px; }
+    p { margin: 8px 0 0; }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(260px, 0.7fr);
+      gap: 18px;
+      align-items: stretch;
+      margin-bottom: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 1px 2px rgba(20, 30, 50, 0.04);
+    }
+
+    .meta {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 28px;
+      line-height: 1.1;
+      color: var(--ink);
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 5px;
+    }
+
+    .ok { color: var(--accent-2); }
+    .warn { color: var(--warn); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    th, td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+
+    th {
+      background: #eef2f8;
+      font-weight: 700;
+      color: #2c3747;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .chart {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #111827;
+      color: #e5e7eb;
+      border-radius: 8px;
+      padding: 14px;
+      overflow-x: auto;
+    }
+
+    @media (max-width: 760px) {
+      .hero, .grid-2, .summary-grid {
+        grid-template-columns: 1fr;
+      }
+      th, td { white-space: normal; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="panel">
+      <h1>OPU Upload Timing Report</h1>
+      <p>
+        Conservative live upload timing from Beechan to <code>opu.peklo.biz</code>.
+        The route is long-distance, so the baseline round trip is high, but the
+        measurements were steady and all normal upload tests succeeded.
+      </p>
+    </div>
+    <div class="panel meta">
+      <div><strong>Measured:</strong> 2026-07-02, about 11:03-11:11 UTC</div>
+      <div><strong>Client:</strong> Beechan, Debian host</div>
+      <div><strong>Target:</strong> opu.peklo.biz, 92.62.234.197</div>
+      <div><strong>Method:</strong> curl multipart POST to <code>opupload.php</code>, then redirect/result-page validation</div>
+    </div>
+  </section>
+
+  <section class="summary-grid">
+    <div class="panel metric">
+      <strong class="ok">0%</strong>
+      <span>ICMP packet loss, 5 pings</span>
+    </div>
+    <div class="panel metric">
+      <strong>257.9 ms</strong>
+      <span>Average ping RTT</span>
+    </div>
+    <div class="panel metric">
+      <strong class="ok">10 / 10</strong>
+      <span>Normal uploads succeeded</span>
+    </div>
+    <div class="panel metric">
+      <strong class="warn">5 / 5</strong>
+      <span>1x1 PNG edge-case uploads returned HTTP 500</span>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div class="panel">
+      <h2>Average Total Time</h2>
+      <svg class="chart" viewBox="0 0 620 300" role="img" aria-label="Average total request time by upload size">
+        <line x1="96" y1="250" x2="590" y2="250" stroke="#cfd6e2"/>
+        <line x1="96" y1="30" x2="96" y2="250" stroke="#cfd6e2"/>
+        <text x="50" y="254" font-size="12" fill="#5f6b7a">0s</text>
+        <text x="44" y="199" font-size="12" fill="#5f6b7a">2s</text>
+        <text x="44" y="144" font-size="12" fill="#5f6b7a">4s</text>
+        <text x="44" y="89" font-size="12" fill="#5f6b7a">6s</text>
+        <text x="44" y="34" font-size="12" fill="#5f6b7a">8s</text>
+        <rect x="116" y="217.6" width="82" height="32.4" fill="#8794a8"/>
+        <rect x="236" y="194.3" width="82" height="55.7" fill="#246bfe"/>
+        <rect x="356" y="163.7" width="82" height="86.3" fill="#00a36c"/>
+        <rect x="476" y="65.9" width="82" height="184.1" fill="#c77700"/>
+        <text x="157" y="272" text-anchor="middle" font-size="12" fill="#17202a">GET</text>
+        <text x="277" y="272" text-anchor="middle" font-size="12" fill="#17202a">135 KB</text>
+        <text x="397" y="272" text-anchor="middle" font-size="12" fill="#17202a">1 MB</text>
+        <text x="517" y="272" text-anchor="middle" font-size="12" fill="#17202a">10 MB</text>
+        <text x="157" y="211" text-anchor="middle" font-size="12" fill="#17202a">1.18s</text>
+        <text x="277" y="188" text-anchor="middle" font-size="12" fill="#17202a">2.03s</text>
+        <text x="397" y="157" text-anchor="middle" font-size="12" fill="#17202a">3.14s</text>
+        <text x="517" y="60" text-anchor="middle" font-size="12" fill="#17202a">6.70s</text>
+      </svg>
+      <p class="note">Scale is 0-8 seconds. Upload bars include POST, one redirect, and result-page download.</p>
+    </div>
+
+    <div class="panel">
+      <h2>POST-Only Upload Leg</h2>
+      <svg class="chart" viewBox="0 0 620 300" role="img" aria-label="POST-only upload timing and throughput">
+        <line x1="90" y1="250" x2="590" y2="250" stroke="#cfd6e2"/>
+        <line x1="90" y1="30" x2="90" y2="250" stroke="#cfd6e2"/>
+        <text x="42" y="254" font-size="12" fill="#5f6b7a">0s</text>
+        <text x="42" y="199" font-size="12" fill="#5f6b7a">2s</text>
+        <text x="42" y="144" font-size="12" fill="#5f6b7a">4s</text>
+        <text x="42" y="89" font-size="12" fill="#5f6b7a">6s</text>
+        <text x="42" y="34" font-size="12" fill="#5f6b7a">8s</text>
+        <rect x="155" y="175.2" width="120" height="74.8" fill="#00a36c"/>
+        <rect x="375" y="43.3" width="120" height="206.7" fill="#c77700"/>
+        <text x="215" y="272" text-anchor="middle" font-size="12" fill="#17202a">1 MB</text>
+        <text x="435" y="272" text-anchor="middle" font-size="12" fill="#17202a">10 MB</text>
+        <text x="215" y="168" text-anchor="middle" font-size="12" fill="#17202a">2.72s</text>
+        <text x="435" y="36" text-anchor="middle" font-size="12" fill="#17202a">7.52s</text>
+        <text x="215" y="152" text-anchor="middle" font-size="12" fill="#5f6b7a">3.08 Mbps</text>
+        <text x="435" y="20" text-anchor="middle" font-size="12" fill="#5f6b7a">11.16 Mbps</text>
+      </svg>
+      <p class="note">Throughput is curl's POST-only <code>speed_upload</code>, converted to decimal Mbps.</p>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-top: 18px;">
+    <h2>Raw Measurements</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Test</th>
+            <th>Runs</th>
+            <th>HTTP</th>
+            <th>Total times</th>
+            <th>Average</th>
+            <th>Validation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Homepage GET</td>
+            <td>5</td>
+            <td>200 each</td>
+            <td>1.206, 1.197, 1.190, 1.107, 1.195 s</td>
+            <td>1.179 s</td>
+            <td>11,300 bytes each</td>
+          </tr>
+          <tr>
+            <td>135 KB PNG upload</td>
+            <td>3 measured + 1 preliminary</td>
+            <td>200 after 1 redirect</td>
+            <td>1.911, 1.953, 2.217 s</td>
+            <td>2.027 s</td>
+            <td>Result pages contained OPU image links</td>
+          </tr>
+          <tr>
+            <td>1 MB SVG upload</td>
+            <td>2</td>
+            <td>200 after 1 redirect</td>
+            <td>3.230, 3.048 s</td>
+            <td>3.139 s</td>
+            <td>Result pages contained OPU image links</td>
+          </tr>
+          <tr>
+            <td>10 MB SVG upload</td>
+            <td>2</td>
+            <td>200 after 1 redirect</td>
+            <td>6.575, 6.815 s</td>
+            <td>6.695 s</td>
+            <td>Result pages contained OPU image links</td>
+          </tr>
+          <tr>
+            <td>1x1 PNG edge case</td>
+            <td>5</td>
+            <td>500 each</td>
+            <td>0.879-1.904 s</td>
+            <td>Not counted as normal upload</td>
+            <td>Empty response bodies</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-top: 18px;">
+    <h2>Route Snapshot</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Check</th><th>Result</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>DNS</td><td><code>opu.peklo.biz -&gt; 92.62.234.197</code></td></tr>
+          <tr><td>Ping</td><td>5 transmitted, 5 received, 0% packet loss; RTT min/avg/max/mdev = 256.572 / 257.939 / 261.729 / 1.932 ms</td></tr>
+          <tr><td>Traceroute</td><td>Reached 92.62.234.197 in 13 hops; final hop about 259 ms. Hop 12 did not reply, but the destination did.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-top: 18px;">
+    <h2>Pasteable Summary</h2>
+    <pre>Mereno z Beechan hostu, dlouha trasa k opu.peklo.biz.
+
+DNS: opu.peklo.biz -&gt; 92.62.234.197
+Ping: 5/5 OK, 0% loss, RTT min/avg/max = 256.6 / 257.9 / 261.7 ms
+
+Homepage GET 5x: stabilne 1.107-1.206 s, HTTP 200.
+
+Uploady:
+- 135 KB PNG: 3 merene uploady, 1.911 / 1.953 / 2.217 s, avg 2.027 s
+- 1 MB SVG: 2 uploady, 3.230 / 3.048 s, avg 3.139 s
+- 10 MB SVG: 2 uploady, 6.575 / 6.815 s, avg 6.695 s
+- POST-only kontrola: 1 MB 2.721 s (~3.08 Mbps), 10 MB 7.515 s (~11.16 Mbps)
+
+Vsechny normalni uploady skoncily HTTP 200 po redirectu na ?page=done a result page obsahovala OPU linky.
+Z teto trasy to nevypada na zasekany server ani packet loss. Latence je vysoka kvuli trase (~258 ms RTT), ale casy jsou stabilni.
+
+Poznamka: 5/5 ultra-tiny 1x1 PNG uploadu vratilo HTTP 500 s prazdnym telem. Normalni PNG a vetsi SVG uploady prosly, takze to vypada spis na edge-case ve zpracovani velmi malych obrazku nez na obecne zpomaleni.</pre>
+  </section>
+</main>
+</body>
+</html>
